@@ -112,7 +112,7 @@
     var hasBomb = false;
     let neighbors = filter(neighborsCanditateIxs)((ix: number) => {
       if (fields[ix].tag === 'NonMine') {
-        return !(fields[ix] as NonMine).discovered;
+        return true;
       } else {
         hasBomb = true;
         return false;
@@ -137,11 +137,11 @@
     while (toDiscover.length > 0) {
       let ix = toDiscover.pop() as number;
       let neighbors = getAutoDiscoverableNeighbors(fields, ix);
-      if (neighbors === null) {
-        return null;
-      }
       discovered.push(ix);
-      toDiscover = toDiscover.concat(neighbors);
+      if (neighbors === null) {
+        continue;
+      }
+      toDiscover = toDiscover.concat(filter(neighbors)((ix) => fields[ix].tag != 'Mine' && discovered.indexOf(ix) === -1));
     }
     return discovered;
   }
@@ -152,7 +152,7 @@
     crypto.getRandomValues(arrInit);
     // Calculate mines
     var mines = map<number, Field>(arrInit)((x) => {
-      if (x < 128) {
+      if (x < 32) {
         return { tag: 'Mine', isMine: true, discovered: false };
       } else {
         return { tag: 'NonMine', neighbors: 0, discovered: false };
@@ -197,8 +197,10 @@
 
   var field: Field[] = [];
   var size = 10;
+  var gameEnded = false
 
   function play() {
+    gameEnded = false
     field = generateField(size);
     drawField(field);
   }
@@ -213,16 +215,20 @@
   }
   
   function tryDiscover(ix: number) {
+    if (gameEnded) {
+      alert("You have already lost! Try again with Play.")
+      return 1
+    }
     let discoveredField = discoverField(field, ix);
     if (discoveredField != null) {
       each(discoveredField)((ix) => {
         field[ix].discovered = true;
       });
-    } else {
-      field[ix].discovered = true;
-      if (field[ix].tag === 'Mine') {
-        alert('You lost!');
-      }
+    }
+    field[ix].discovered = true;
+    if (field[ix].tag === 'Mine') {
+      gameEnded = true
+      alert('You lost!');
     }
     drawField(field);
   }
