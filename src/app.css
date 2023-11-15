@@ -1,80 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+  --default-font-color: #fff;
+  --default-background-color: #000;
+  --default-button-color-1: #85ab8f;
+  --default-button-color-2: #3b5753;
+  --default-button-color-3: #21b875;
+  --default-button-color-gradient: linear-gradient(var(--default-button-color-1), var(--default-button-color-2));
+  --background: var(--default-background-color) url('stars.png') repeat top center;
+  --twink-bg: transparent url('twink.png') repeat top center;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+@keyframes stars {
+  0% { background: var(--default-background-color) url('stars.png') repeat top center; }
+  50% { background: var(--default-background-color) url('stars2.png') repeat 100px 100px }
+  100% { background: var(--default-background-color) url('stars.png') repeat top center; }
 }
-a:hover {
-  color: #535bf2;
+
+@keyframes move-twink-back {
+	from {background-position:0 0;}
+	to {background-position:-10000px 5000px;}
 }
 
 body {
   margin: 0;
+  padding: 0;
+  font-family: 'Montserrat', sans-serif;
+  --background: var(--background);
+  animation: stars 260s infinite linear;
+  color: var(--default-font-color);
+}
+
+main {
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--twink-bg);
+  animation: move-twink-back 200s linear infinite;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+header {
+  align-self: center;
 }
 
-.card {
-  padding: 2em;
+header h1#title {
+  display: flex;
+  flex-direction: column;
+  text-transform: uppercase;
+  font-size: 7.5rem;
+  font-weight: 700;
+  letter-spacing: 0.5rem;
+  line-height: 7.5rem;
+  align-items: end;
+  padding-left: 10rem;
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+header h1#title #title-second {
+  -webkit-text-stroke: 1px var(--default-font-color);
+  color: transparent;
+}
+
+div#content {
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-right: 6rem;
+  padding-bottom: 6rem;
+}
+
+.menu-item {
+  text-transform: uppercase;
+}
+
+input#menu-nickname {
+  background: var(--default-button-color-gradient);
+  color: var(--default-font-color);
+  font-size: 2.5rem;
+  font-weight: 600;
+  padding: 1rem 2rem;
+  border-radius: 3rem;
+  border-color: var(--default-button-color-3);
+  border-width: 0.2rem;
+  border: none;
+  -webkit-box-shadow: 0 0 0 1px var(--default-button-color-3);
+     -moz-box-shadow: 0 0 0 1px var(--default-button-color-3);
+          box-shadow: 0 0 0 1px var(--default-button-color-3);
+}
+
+#menu-size-y, #menu-size-x {
+  background: transparent;
+  color: var(--default-font-color);
+  padding: .5rem 1rem;
+  border-radius: 3rem;
+  border-color: var(--default-button-color-3);
+  border-width: 0.2rem;
+  border: none;
+  -webkit-box-shadow: 0 0 0 1px var(--default-button-color-3);
+     -moz-box-shadow: 0 0 0 1px var(--default-button-color-3);
+          box-shadow: 0 0 0 1px var(--default-button-color-3);
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  background: var(--default-button-color-gradient);
+  color: var(--default-font-color);
+  font-size: 1.5rem;
+  font-weight: 600;
+  padding: .7rem 1.5rem;
+  border-radius: 3rem;
+  border-color: var(--default-button-color-3);
+  border-width: 0.2rem;
+  border: none;
+  -webkit-box-shadow: 0 0 0 1px var(--default-button-color-3);
+     -moz-box-shadow: 0 0 0 1px var(--default-button-color-3);
+          box-shadow: 0 0 0 1px var(--default-button-color-3);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.menu-left {
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
 }

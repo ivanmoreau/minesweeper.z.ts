@@ -1,6 +1,14 @@
 <script lang="ts">
   import { Future } from 'bird-future';
-  import { drawNumber, drawBomb, drawUndiscovered, Color } from './lib/drawing';
+  import { Init } from './Shared';
+  import { drawNumber, drawBomb, drawUndiscovered, Color, drawFlag } from './lib/drawing';
+
+  import Start from './Start.svelte';
+  import Game from './Game.svelte';
+  import { GameServiceClient } from './GameServiceClient';
+    import type { Score } from './models/Score';
+
+  let gameServiceClient = new GameServiceClient('/api.php');
 
   function map<A, B>(iterable: Iterable<A>): (fn: (a: A) => B) => B[] {
     return (fn: (a: A) => B) => {
@@ -44,12 +52,14 @@
     tag: 'NonMine';
     neighbors: number;
     discovered: boolean;
+    flagged: boolean;
   }
 
   type Mine = {
     tag: 'Mine';
     isMine: true;
     discovered: boolean;
+    flagged: boolean;
   }
 
   type Field = NonMine | Mine;
@@ -149,13 +159,14 @@
   function generateField(size: number): Field[] {
     // Pseudo-cryptographically generate values
     var arrInit: Uint8Array = new Uint8Array(size * size);
+    console.log(`Generating ${size * size} random values`);
     crypto.getRandomValues(arrInit);
     // Calculate mines
     var mines = map<number, Field>(arrInit)((x) => {
-      if (x < 32) {
-        return { tag: 'Mine', isMine: true, discovered: false };
+      if (x < 255 * (init.minesPercentage / 100)) {
+        return { tag: 'Mine', isMine: true, discovered: false, flagged: false };
       } else {
-        return { tag: 'NonMine', neighbors: 0, discovered: false };
+        return { tag: 'NonMine', neighbors: 0, discovered: false, flagged: false };
       }
     });
     // Calculate neighbors
@@ -169,26 +180,31 @@
 
   function drawField(field: Field[]): Promise<void> {
     return new Promise((resolve, reject) => {
-      let canvasElem: HTMLCanvasElement = document.getElementById('canvas') as HTMLCanvasElement;
+      let canvasElem: HTMLCanvasElement = document.getElementById('game-canvas') as HTMLCanvasElement;
       let ctx: CanvasRenderingContext2D = canvasElem.getContext('2d') as CanvasRenderingContext2D;
       ctx.clearRect(0, 0, canvasElem.width, canvasElem.height);
+      let resizeFactor = canvasElem.width / (init.size * 40);
       for (let i = 0; i < field.length; i++) {
-        let xCoord = (i % size) * 40;
-        let yCoord = Math.floor(i / size) * 40;
+        let xCoord = (i % init.size) * 40 * resizeFactor;
+        let yCoord = Math.floor(i / init.size) * 40 * resizeFactor;
 
+        if (field[i].flagged === true) {
+          drawFlag(ctx, xCoord, yCoord, new Color(255, 255, 255, 255), resizeFactor);
+          continue;
+        }
         if (field[i].discovered === false) {
-          drawUndiscovered(ctx, xCoord, yCoord, new Color(255, 255, 255, 255), 1.0);
+          drawUndiscovered(ctx, xCoord, yCoord, new Color(255, 255, 255, 255), resizeFactor);
           continue;
         }
         if (field[i].tag === 'Mine') {
-          drawBomb(ctx, xCoord, yCoord, new Color(255, 255, 255, 255), 1.0);
+          drawBomb(ctx, xCoord, yCoord, new Color(255, 255, 255, 255), resizeFactor);
         } else {
           let NonMine = field[i] as NonMine;
           if (NonMine.neighbors == 0) {
             console.log(`Skipping ${i} because it has no neighbors`);
             continue;
           }
-          drawNumber(ctx, xCoord,yCoord, NonMine.neighbors, new Color(255, 0, 0, 255), 1.0);
+          drawNumber(ctx, xCoord,yCoord, NonMine.neighbors, new Color(255, 0, 0, 255), resizeFactor);
         }
       }
       resolve();
@@ -196,13 +212,19 @@
   }
 
   var field: Field[] = [];
-  var size = 10;
   var gameEnded = false
+  var startTime = 0;
+  var scoresPromise: Promise<Score[]> = gameServiceClient.getBestScores();
 
-  function play() {
-    gameEnded = false
-    field = generateField(size);
-    drawField(field);
+  var setFlagMode = new class {
+    private flagMode = false;
+    getBoolean() {
+      return this.flagMode;
+    }
+    setBoolean(value: boolean) {
+      console.log(`Setting flag mode to ${value}`);
+      this.flagMode = value;
+    }
   }
 
   function getMatrixField(field: Field[]): Field[][] {
@@ -219,6 +241,13 @@
       alert("You have already lost! Try again with Play.")
       return 1
     }
+    console.log(`Trying to discover ${ix}`);
+    console.log(`Flag mode: ${setFlagMode}`);
+    if (setFlagMode.getBoolean()) {
+      field[ix].flagged = !field[ix].flagged;
+      drawField(field);
+      return 1
+    }
     let discoveredField = discoverField(field, ix);
     if (discoveredField != null) {
       each(discoveredField)((ix) => {
@@ -233,68 +262,83 @@
     drawField(field);
   }
 
+  function play() {
+    console.log('Play!');
+    console.log(`Size: ${init.size}`);
+    console.log(`Mines percentage: ${init.minesPercentage}`);
+    console.log(`Flags color: ${init.flagsColor}`);
+    console.log(`Mines color: ${init.minesColor}`);
+    console.log(`Name: ${init.name}`);
+    startTime = Math.floor(Date.now() / 1000);
+    gameEnded = false
+    field = generateField(init.size);
+    drawField(field);
+  }
+
+  async function click(event: MouseEvent) {
+    if (gameEnded) {
+      alert("You have already lost/win! Try again with Play.")
+      return 1
+    }
+    // If all non-mines are discovered, you win
+    let undiscoveredNonMines = filter(withIx(field))(([ix, field]) => field.tag === 'NonMine' && field.discovered === false);
+    if (undiscoveredNonMines.length === 0) {
+      gameEnded = true
+      let finalTime = Math.floor(Date.now() / 1000) - startTime;
+      await gameServiceClient.updateScore(init.name, finalTime, init.size, init.minesPercentage);
+      scoresPromise = gameServiceClient.getBestScores();
+      alert('You win!');
+      return 1
+    }
+
+    let canvasElem: HTMLCanvasElement = document.getElementById('game-canvas') as HTMLCanvasElement;
+    let ctx: CanvasRenderingContext2D = canvasElem.getContext('2d') as CanvasRenderingContext2D;
+    let rect: DOMRect = canvasElem.getBoundingClientRect();
+    let x = event.clientX - rect.left;
+    let y = event.clientY - rect.top;
+    let resizeFactor = canvasElem.width / (init.size * 40);
+    let ix = Math.floor(x / (40 * resizeFactor)) + Math.floor(y / (40 * resizeFactor)) * init.size;
+    console.log(`Clicked on ix: ${ix} x: (${x}, y: ${y})`);
+    tryDiscover(ix);
+
+    if (undiscoveredNonMines.length === 0) {
+      gameEnded = true
+      let finalTime =  Math.floor(Date.now() / 1000) - startTime;
+      await gameServiceClient.updateScore(init.name, finalTime, init.size, init.minesPercentage);
+      scoresPromise = gameServiceClient.getBestScores();
+      alert('You win!');
+      return 1
+    }
+  }
+
+
+  async function setGamePage() {
+    isGamePage = true;
+    await gameServiceClient.createUser(init.name);
+  }
+
 
   var isGameStarted = false;
+
+  var isGamePage = false;
+
+  let init: Init = {
+    name: '',
+    size: 20,
+    minesPercentage: 10,
+    flagsColor: '#000000',
+    minesColor: '#000000'
+  };
 </script>
 
-<main>
-  <h1>Minesweeper</h1>
 
+{#if isGamePage}
+  <Game play={play} click={click} gameServiceClient={gameServiceClient} mode_set_flag={setFlagMode} scoresPromise={scoresPromise}/>
+{:else}
+  <Start init={init} play={setGamePage} />
+{/if}
 
-  {#if isGameStarted}
-    <div class="card">
-      <canvas id="canvas" width="400" height="400"></canvas>
-    </div>
-    <div id="card">
-      <button on:click={() => play()}>Play</button>
-    </div>
-    <div class="card">
-    {#each getMatrixField(field) as row, i}
-      <div class="row">
-        {#each row as field, j}
-          <div class="field">
-            {#if field.discovered}
-              {#if field.tag === 'Mine'}
-                <button on:click={() => tryDiscover(i * size + j)} class="mine">💣</button>
-              {:else}
-                <button on:click={() => tryDiscover(i * size + j)} class="non-mine">{field.neighbors}</button>
-              {/if}
-            {:else}
-              <button on:click={() => tryDiscover(i * size + j)} class="undiscovered">?</button>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/each}
-    </div>
-  {:else}
-    <div class="card">
-      <button on:click={() => isGameStarted = true}>Start Game</button>
-    </div>
-  {/if}
-
-
-</main>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
-  }
 
-  .row {
-    display: flex;
-    flex-direction: row;
-  }
 </style>

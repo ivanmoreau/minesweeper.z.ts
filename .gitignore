@@ -25,3 +25,8 @@ dist-ssr
 
 # Nix
 .direnv/*
+
+# Other
+.tmp/
+.direnv/
+.env
