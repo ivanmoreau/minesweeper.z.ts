@@ -126,6 +126,29 @@ export function drawBox(ctx : CanvasRenderingContext2D, x: number, y: number, co
     ctx.strokeStyle = oldFillStyle;
   }
 
+  export function drawFlag(ctx: CanvasRenderingContext2D, x: number, y: number, color: Color, scale: number = 1.0) {
+    let flag = [
+      { command: "move", x: 5, y: 5},
+      { command: "line", x: 5, y: 35},
+      { command: "line", x: 7, y: 35},
+      { command: "line", x: 7, y: 5},
+      { command: "line", x: 5, y: 5},
+      { command: "line", x: 5, y: 20},
+      { command: "line", x: 35, y: 20},
+      { command: "line", x: 35, y: 5},
+      { command: "line", x: 5, y: 5},
+    ]
+    let oldFillStyle = ctx.strokeStyle;
+    ctx.strokeStyle = color.toString();
+    ctx.beginPath();
+    for (const command of flag) {
+      executeCommand(ctx, command.command, x, y, command.x, command.y, scale);
+    }
+    drawBox(ctx, x, y, color, scale);
+    ctx.stroke();
+    ctx.strokeStyle = oldFillStyle;
+  }
+
   export function drawUndiscovered(ctx: CanvasRenderingContext2D, x: number, y: number, color: Color, scale: number = 1.0) {
     let oldFillStyle = ctx.strokeStyle;
     ctx.strokeStyle = color.toString();

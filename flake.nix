@@ -13,6 +13,9 @@
             buildInputs = [ 
               pkgs.nodejs_20
               pkgs.nodePackages.npm
+              pkgs.dbmate
+              pkgs.mariadb_105
+              pkgs.php
             ];
           };
       };
